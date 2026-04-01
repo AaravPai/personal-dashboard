@@ -39,3 +39,21 @@ export async function addSubscription(formData: FormData) {
 
   revalidatePath("/subscriptions");
 }
+
+export async function deleteSubscription(formData: FormData) {
+  const id = formData.get("id")?.toString();
+
+  if (!id) {
+    throw new Error("Subscription id is required.");
+  }
+
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("subscriptions").delete().eq("id", id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/subscriptions");
+}
