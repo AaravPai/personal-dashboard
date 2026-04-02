@@ -1,6 +1,7 @@
 import { DashboardShell } from "@/components/dashboard-shell";
 import { createClient } from "@/lib/supabase/server";
 import { addExpense, deleteExpense } from "./actions";
+import { ExpenseFilters } from "./expense-filters";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("en-US", {
@@ -16,7 +17,27 @@ function getLocalDateString(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-export default async function ExpensesPage() {
+type SearchParams = Promise<{
+  query?: string;
+  category?: string;
+  payment_method?: string;
+  start_date?: string;
+  end_date?: string;
+}>;
+
+export default async function ExpensesPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
+  const {
+    query = "",
+    category = "",
+    payment_method = "",
+    start_date = "",
+    end_date = "",
+  } = await searchParams;
+
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -25,7 +46,48 @@ export default async function ExpensesPage() {
     .order("purchase_date", { ascending: false })
     .order("created_at", { ascending: false });
 
-  const expenses = data ?? [];
+  const allExpenses = data ?? [];
+
+  const normalizedQuery = query.trim().toLowerCase();
+  const normalizedCategory = category.trim().toLowerCase();
+  const normalizedPaymentMethod = payment_method.trim().toLowerCase();
+
+  const expenses = allExpenses.filter((expense) => {
+    const matchesQuery =
+      !normalizedQuery ||
+      expense.merchant.toLowerCase().includes(normalizedQuery) ||
+      expense.notes?.toLowerCase().includes(normalizedQuery);
+
+    const matchesCategory =
+      !normalizedCategory ||
+      expense.category?.toLowerCase() === normalizedCategory;
+
+    const matchesPaymentMethod =
+      !normalizedPaymentMethod ||
+      expense.payment_method?.toLowerCase() === normalizedPaymentMethod;
+
+    const matchesStartDate =
+      !start_date || expense.purchase_date >= start_date;
+
+    const matchesEndDate =
+      !end_date || expense.purchase_date <= end_date;
+
+    return (
+      matchesQuery &&
+      matchesCategory &&
+      matchesPaymentMethod &&
+      matchesStartDate &&
+      matchesEndDate
+    );
+  });
+
+  const categories = Array.from(
+    new Set(allExpenses.map((expense) => expense.category).filter(Boolean))
+  ).sort() as string[];
+
+  const paymentMethods = Array.from(
+    new Set(allExpenses.map((expense) => expense.payment_method).filter(Boolean))
+  ).sort() as string[];
 
   const today = getLocalDateString(new Date());
   const startOfMonth = new Date();
@@ -65,6 +127,15 @@ export default async function ExpensesPage() {
     >
       <section className="mb-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <p className="text-sm font-medium text-muted-foreground">
+            Matching Expenses
+          </p>
+          <p className="mt-2 text-2xl font-bold text-card-foreground">
+            {expenses.length}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
           <p className="text-sm font-medium text-muted-foreground">Spent Today</p>
           <p className="mt-2 text-2xl font-bold text-card-foreground">
             {formatCurrency(todayTotal)}
@@ -80,18 +151,9 @@ export default async function ExpensesPage() {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <div className="rounded-2xl border border-lux-purple/40 bg-lux-purple-soft p-5 shadow-sm">
           <p className="text-sm font-medium text-muted-foreground">
-            Average Expense
-          </p>
-          <p className="mt-2 text-2xl font-bold text-card-foreground">
-            {formatCurrency(averageExpense)}
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <p className="text-sm font-medium text-muted-foreground">
-            Largest Expense
+            Largest Matching Expense
           </p>
           <p className="mt-2 text-2xl font-bold text-card-foreground">
             {largestExpense
@@ -103,6 +165,11 @@ export default async function ExpensesPage() {
           </p>
         </div>
       </section>
+
+      <ExpenseFilters
+        categories={categories}
+        paymentMethods={paymentMethods}
+      />
 
       <section className="mb-8 rounded-2xl border border-border bg-card p-6 shadow-sm">
         <h2 className="mb-4 text-xl font-semibold text-card-foreground">
@@ -276,7 +343,7 @@ export default async function ExpensesPage() {
 
         {!error && expenses.length === 0 && (
           <div className="rounded-2xl border border-border bg-card p-6 text-muted-foreground shadow-sm">
-            No expenses yet.
+            No matching expenses.
           </div>
         )}
       </section>
