@@ -1,13 +1,222 @@
 import Link from "next/link";
 import { DashboardShell } from "@/components/dashboard-shell";
+import { createClient } from "@/lib/supabase/server";
 
-export default function Home() {
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(value);
+}
+
+function getLocalDateString(date: Date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export default async function Home() {
+  const supabase = await createClient();
+
+  const [{ data: subscriptionsData }, { data: expensesData }] = await Promise.all([
+    supabase
+      .from("subscriptions")
+      .select("*")
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("expenses")
+      .select("*")
+      .order("purchase_date", { ascending: false })
+      .order("created_at", { ascending: false }),
+  ]);
+
+  const subscriptions = subscriptionsData ?? [];
+  const expenses = expensesData ?? [];
+
+  const monthlySubscriptionTotal = subscriptions.reduce((sum, sub) => {
+    const cost = Number(sub.cost) || 0;
+    if (sub.billing_cycle === "monthly") return sum + cost;
+    if (sub.billing_cycle === "yearly") return sum + cost / 12;
+    return sum;
+  }, 0);
+
+  const today = getLocalDateString(new Date());
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  const startOfMonthString = getLocalDateString(startOfMonth);
+
+  const todaySpend = expenses.reduce((sum, expense) => {
+    return expense.purchase_date === today
+      ? sum + (Number(expense.amount) || 0)
+      : sum;
+  }, 0);
+
+  const monthSpend = expenses.reduce((sum, expense) => {
+    return expense.purchase_date >= startOfMonthString
+      ? sum + (Number(expense.amount) || 0)
+      : sum;
+  }, 0);
+
+  const totalMonthlySpending = monthlySubscriptionTotal + monthSpend;
+
+  const recentSubscriptions = subscriptions.slice(0, 3);
+  const recentExpenses = expenses.slice(0, 5);
+
   return (
     <DashboardShell
       title="Dashboard"
       description="Your central hub for subscriptions, expenses, tasks, and memory."
     >
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="mb-8 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <p className="text-sm font-medium text-muted-foreground">
+            Monthly Subscription Total
+          </p>
+          <p className="mt-2 text-2xl font-bold text-card-foreground">
+            {formatCurrency(monthlySubscriptionTotal)}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <p className="text-sm font-medium text-muted-foreground">
+            Spending Today
+          </p>
+          <p className="mt-2 text-2xl font-bold text-card-foreground">
+            {formatCurrency(todaySpend)}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <p className="text-sm font-medium text-muted-foreground">
+            Spending This Month
+          </p>
+          <p className="mt-2 text-2xl font-bold text-card-foreground">
+            {formatCurrency(monthSpend)}
+          </p>
+        </div>
+
+        <div className="relative overflow-hidden rounded-2xl border border-lux-purple/35 bg-gradient-to-br from-lux-purple-soft via-card to-lux-gold-soft/40 p-5 shadow-sm">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-lux-purple via-lux-gold to-lux-silver opacity-80" />
+          <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-lux-purple/15 blur-3xl" />
+          <div className="absolute -bottom-8 -left-8 h-24 w-24 rounded-full bg-lux-gold/15 blur-3xl" />
+
+          <div className="relative">
+            <p className="text-sm font-medium text-muted-foreground">
+              Total Monthly Spending
+            </p>
+
+            <p className="mt-2 text-2xl font-bold text-foreground">
+              {formatCurrency(totalMonthlySpending)}
+            </p>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <p className="text-sm font-medium text-muted-foreground">
+            Active Subscriptions
+          </p>
+          <p className="mt-2 text-2xl font-bold text-card-foreground">
+            {subscriptions.length}
+          </p>
+        </div>
+      </section>
+
+      <section className="mb-8 grid gap-6 xl:grid-cols-2">
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-card-foreground">
+              Recent Subscriptions
+            </h2>
+            <Link
+              href="/subscriptions"
+              className="text-sm font-medium text-primary transition hover:opacity-80"
+            >
+              View all
+            </Link>
+          </div>
+
+          <div className="space-y-3">
+            {recentSubscriptions.length > 0 ? (
+              recentSubscriptions.map((sub) => (
+                <div
+                  key={sub.id}
+                  className="flex items-center justify-between rounded-xl bg-muted px-4 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-card-foreground">
+                      {sub.name}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {sub.category || "Uncategorized"}
+                    </p>
+                  </div>
+
+                  <div className="ml-4 text-right">
+                    <p className="font-semibold text-card-foreground">
+                      {formatCurrency(Number(sub.cost))}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {sub.billing_cycle}
+                    </p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No subscriptions yet.
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-card-foreground">
+              Recent Expenses
+            </h2>
+            <Link
+              href="/expenses"
+              className="text-sm font-medium text-primary transition hover:opacity-80"
+            >
+              View all
+            </Link>
+          </div>
+
+          <div className="space-y-3">
+            {recentExpenses.length > 0 ? (
+              recentExpenses.map((expense) => (
+                <div
+                  key={expense.id}
+                  className="flex items-center justify-between rounded-xl bg-muted px-4 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-card-foreground">
+                      {expense.merchant}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {expense.category || "Uncategorized"}
+                    </p>
+                  </div>
+
+                  <div className="ml-4 text-right">
+                    <p className="font-semibold text-card-foreground">
+                      {formatCurrency(Number(expense.amount))}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {expense.purchase_date}
+                    </p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">No expenses yet.</p>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Link
           href="/subscriptions"
           className="rounded-2xl border border-border bg-card p-5 shadow-sm transition hover:border-primary/40 hover:shadow-md"
@@ -59,18 +268,7 @@ export default function Home() {
             Save useful notes, recipes, ideas, and things worth remembering.
           </p>
         </Link>
-      </div>
-
-      <div className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-card-foreground">
-          Welcome
-        </h2>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-          This dashboard is designed to grow with you. Start with subscriptions,
-          then expand into expenses, tasks, memory, and whatever other systems
-          you want to add later.
-        </p>
-      </div>
+      </section>
     </DashboardShell>
   );
 }

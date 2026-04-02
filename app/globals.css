@@ -1,78 +1,101 @@
 @import "tailwindcss";
 
-@custom-variant dark (&:where(.dark, .dark *));
+/* =========================
+   BASE COLOR VARIABLES
+   ========================= */
 
 :root {
-  --background: oklch(0.985 0.01 250);
-  --foreground: oklch(0.24 0.02 255);
+  /* Core UI colors (day mode) */
+  --background: oklch(0.97 0.01 250);
+  --foreground: oklch(0.2 0.02 250);
 
-  --card: oklch(0.995 0.008 250);
-  --card-foreground: oklch(0.24 0.02 255);
+  --card: oklch(0.99 0.005 250);
+  --card-foreground: oklch(0.2 0.02 250);
 
-  --popover: oklch(0.995 0.008 250);
-  --popover-foreground: oklch(0.24 0.02 255);
+  --muted: oklch(0.92 0.01 250);
+  --muted-foreground: oklch(0.45 0.02 250);
 
-  --primary: oklch(0.58 0.16 262);
+  --border: oklch(0.85 0.01 250);
+  --input: oklch(0.9 0.01 250);
+
+  --primary: oklch(0.55 0.15 260);
   --primary-foreground: oklch(0.98 0.01 250);
 
-  --secondary: oklch(0.93 0.03 235);
-  --secondary-foreground: oklch(0.28 0.02 255);
+  --secondary: oklch(0.9 0.01 250);
+  --secondary-foreground: oklch(0.25 0.02 250);
 
-  --muted: oklch(0.95 0.015 250);
-  --muted-foreground: oklch(0.48 0.02 255);
-
-  --accent: oklch(0.87 0.09 95);
-  --accent-foreground: oklch(0.28 0.02 255);
-
-  --destructive: oklch(0.62 0.22 25);
+  --destructive: oklch(0.65 0.2 25);
   --destructive-foreground: oklch(0.98 0.01 250);
 
-  --border: oklch(0.87 0.015 250);
-  --input: oklch(0.87 0.015 250);
-  --ring: oklch(0.58 0.16 262);
+  /* =========================
+     LUX COLORS (DAY)
+     ========================= */
 
-  --radius: 0.9rem;
+  --lux-gold: oklch(0.82 0.12 95);
+  --lux-gold-soft: oklch(0.95 0.02 95);
+
+  --lux-purple: oklch(0.62 0.18 295);
+  --lux-purple-soft: oklch(0.96 0.02 295);
+
+  --lux-silver: oklch(0.78 0.01 255);
 }
+
+/* =========================
+   DARK MODE
+   ========================= */
 
 .dark {
-  --background: oklch(0.18 0.01 255);
-  --foreground: oklch(0.92 0.01 255);
+  --background: oklch(0.12 0.01 250);
+  --foreground: oklch(0.95 0.01 250);
 
-  --card: oklch(0.23 0.015 255);
-  --card-foreground: oklch(0.92 0.01 255);
+  --card: oklch(0.15 0.01 250);
+  --card-foreground: oklch(0.95 0.01 250);
 
-  --popover: oklch(0.23 0.015 255);
-  --popover-foreground: oklch(0.92 0.01 255);
+  --muted: oklch(0.2 0.01 250);
+  --muted-foreground: oklch(0.7 0.01 250);
 
-  --primary: oklch(0.83 0.03 255);
-  --primary-foreground: oklch(0.20 0.01 255);
+  --border: oklch(0.3 0.01 250);
+  --input: oklch(0.25 0.01 250);
 
-  --secondary: oklch(0.28 0.015 255);
-  --secondary-foreground: oklch(0.92 0.01 255);
+  --primary: oklch(0.7 0.12 260);
+  --primary-foreground: oklch(0.1 0.01 250);
 
-  --muted: oklch(0.26 0.01 255);
-  --muted-foreground: oklch(0.72 0.01 255);
+  --secondary: oklch(0.22 0.01 250);
+  --secondary-foreground: oklch(0.95 0.01 250);
 
-  --accent: oklch(0.70 0.02 255);
-  --accent-foreground: oklch(0.18 0.01 255);
+  --destructive: oklch(0.7 0.18 25);
+  --destructive-foreground: oklch(0.1 0.01 250);
 
-  --destructive: oklch(0.68 0.16 25);
-  --destructive-foreground: oklch(0.95 0.01 255);
+  /* =========================
+     LUX COLORS (DARK)
+     ========================= */
 
-  --border: oklch(0.34 0.01 255);
-  --input: oklch(0.34 0.01 255);
-  --ring: oklch(0.78 0.03 255);
+  --lux-gold: oklch(0.75 0.1 95);
+  --lux-gold-soft: oklch(0.25 0.02 95);
+
+  --lux-purple: oklch(0.7 0.12 295);
+  --lux-purple-soft: oklch(0.25 0.02 295);
+
+  --lux-silver: oklch(0.7 0.01 255);
 }
 
+/* =========================
+   TAILWIND THEME MAPPING
+   ========================= */
+
 @theme inline {
+  /* Core system */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
 
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
 
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
@@ -80,51 +103,32 @@
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
 
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
 
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
+  /* =========================
+     LUX COLORS (THIS FIXES YOUR ISSUE)
+     ========================= */
 
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --color-lux-gold: var(--lux-gold);
+  --color-lux-gold-soft: var(--lux-gold-soft);
+
+  --color-lux-purple: var(--lux-purple);
+  --color-lux-purple-soft: var(--lux-purple-soft);
+
+  --color-lux-silver: var(--lux-silver);
 }
+
+/* =========================
+   BASE STYLES
+   ========================= */
 
 * {
-  border-color: var(--border);
-}
-
-html {
-  background: var(--background);
+  border-color: var(--color-border);
 }
 
 body {
-  min-height: 100vh;
-  background:
-    radial-gradient(circle at top left, color-mix(in oklab, var(--primary) 10%, transparent), transparent 28%),
-    radial-gradient(circle at top right, color-mix(in oklab, var(--accent) 10%, transparent), transparent 24%),
-    linear-gradient(to bottom, var(--background), color-mix(in oklab, var(--background) 92%, var(--secondary)));
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-input,
-select,
-textarea,
-button {
-  font: inherit;
-}
-
-::selection {
-  background: color-mix(in oklab, var(--primary) 30%, white);
-  color: var(--foreground);
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-feature-settings: "rlig" 1, "calt" 1;
 }
