@@ -1,12 +1,15 @@
 import { DashboardShell } from "@/components/dashboard-shell";
 import { createClient } from "@/lib/supabase/server";
 import { addTodo, deleteTodo, updateTodoStatus } from "./actions";
+import { TodoFilters } from "./todo-filters";
+
+function normalizeTimestamp(value: string) {
+  return value.replace(" ", "T");
+}
 
 function isOverdue(dueAt: string | null) {
   if (!dueAt) return false;
-
-  const normalized = dueAt.replace(" ", "T");
-  return new Date(normalized) < new Date();
+  return new Date(normalizeTimestamp(dueAt)) < new Date();
 }
 
 function formatStatusLabel(status: string) {
@@ -31,16 +34,33 @@ function getPriorityClasses(priority: string) {
 function formatDueAt(dueAt: string | null) {
   if (!dueAt) return "No due date";
 
-  const normalized = dueAt.replace(" ", "T");
-  const date = new Date(normalized);
-
-  return date.toLocaleString([], {
+  return new Date(normalizeTimestamp(dueAt)).toLocaleString([], {
     dateStyle: "medium",
     timeStyle: "short",
   });
 }
 
-export default async function TodosPage() {
+type SearchParams = Promise<{
+  query?: string;
+  status?: string;
+  priority?: string;
+  category?: string;
+  overdue?: string;
+}>;
+
+export default async function TodosPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
+  const {
+    query = "",
+    status = "",
+    priority = "",
+    category = "",
+    overdue = "",
+  } = await searchParams;
+
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -48,7 +68,50 @@ export default async function TodosPage() {
     .select("*")
     .order("created_at", { ascending: false });
 
-  const todos = data ?? [];
+  const allTodos = data ?? [];
+
+  const normalizedQuery = query.trim().toLowerCase();
+  const normalizedStatus = status.trim().toLowerCase();
+  const normalizedPriority = priority.trim().toLowerCase();
+  const normalizedCategory = category.trim().toLowerCase();
+
+  const todos = allTodos.filter((todo) => {
+    const matchesQuery =
+      !normalizedQuery ||
+      todo.title.toLowerCase().includes(normalizedQuery) ||
+      todo.description?.toLowerCase().includes(normalizedQuery);
+
+    const matchesStatus =
+      !normalizedStatus || todo.status.toLowerCase() === normalizedStatus;
+
+    const matchesPriority =
+      !normalizedPriority || todo.priority.toLowerCase() === normalizedPriority;
+
+    const matchesCategory =
+      !normalizedCategory ||
+      todo.category?.toLowerCase() === normalizedCategory;
+
+    const taskIsOverdue = todo.status !== "done" && isOverdue(todo.due_at);
+
+    const matchesOverdue =
+      overdue === ""
+        ? true
+        : overdue === "true"
+        ? taskIsOverdue
+        : !taskIsOverdue;
+
+    return (
+      matchesQuery &&
+      matchesStatus &&
+      matchesPriority &&
+      matchesCategory &&
+      matchesOverdue
+    );
+  });
+
+  const categories = Array.from(
+    new Set(allTodos.map((todo) => todo.category).filter(Boolean))
+  ).sort() as string[];
 
   const todoCount = todos.filter((item) => item.status === "todo").length;
   const inProgressCount = todos.filter(
@@ -66,9 +129,11 @@ export default async function TodosPage() {
     >
       <section className="mb-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <p className="text-sm font-medium text-muted-foreground">To Do</p>
+          <p className="text-sm font-medium text-muted-foreground">
+            Matching Tasks
+          </p>
           <p className="mt-2 text-2xl font-bold text-card-foreground">
-            {todoCount}
+            {todos.length}
           </p>
         </div>
 
@@ -95,6 +160,8 @@ export default async function TodosPage() {
           </p>
         </div>
       </section>
+
+      <TodoFilters categories={categories} />
 
       <section className="mb-8 rounded-2xl border border-border bg-card p-6 shadow-sm">
         <h2 className="mb-4 text-xl font-semibold text-card-foreground">
@@ -313,7 +380,7 @@ export default async function TodosPage() {
 
         {!error && todos.length === 0 && (
           <div className="rounded-2xl border border-border bg-card p-6 text-muted-foreground shadow-sm">
-            No tasks yet.
+            No matching tasks.
           </div>
         )}
       </section>
