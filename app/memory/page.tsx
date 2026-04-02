@@ -5,16 +5,31 @@ import {
   deleteMemoryEntry,
   togglePinnedMemoryEntry,
 } from "./actions";
+import { MemoryFilters } from "./memory-filters";
 
 function getTagList(tags: string | null) {
   if (!tags) return [];
+
   return tags
     .split(",")
     .map((tag) => tag.trim())
     .filter(Boolean);
 }
 
-export default async function MemoryPage() {
+type SearchParams = Promise<{
+  query?: string;
+  category?: string;
+  tag?: string;
+  pinned?: string;
+}>;
+
+export default async function MemoryPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
+  const { query = "", category = "", tag = "", pinned = "" } = await searchParams;
+
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -23,7 +38,41 @@ export default async function MemoryPage() {
     .order("is_pinned", { ascending: false })
     .order("created_at", { ascending: false });
 
-  const entries = data ?? [];
+  const allEntries = data ?? [];
+
+  const normalizedQuery = query.trim().toLowerCase();
+  const normalizedCategory = category.trim().toLowerCase();
+  const normalizedTag = tag.trim().toLowerCase();
+
+  const entries = allEntries.filter((entry) => {
+    const matchesQuery =
+      !normalizedQuery ||
+      entry.title.toLowerCase().includes(normalizedQuery) ||
+      entry.content.toLowerCase().includes(normalizedQuery);
+
+    const matchesCategory =
+      !normalizedCategory ||
+      entry.category?.toLowerCase() === normalizedCategory;
+
+    const entryTags = getTagList(entry.tags).map((item) => item.toLowerCase());
+
+    const matchesTag =
+      !normalizedTag ||
+      entryTags.some((item) => item.includes(normalizedTag));
+
+    const matchesPinned =
+      pinned === ""
+        ? true
+        : pinned === "true"
+        ? entry.is_pinned
+        : !entry.is_pinned;
+
+    return matchesQuery && matchesCategory && matchesTag && matchesPinned;
+  });
+
+  const categories = Array.from(
+    new Set(allEntries.map((entry) => entry.category).filter(Boolean))
+  ).sort() as string[];
 
   const pinnedCount = entries.filter((entry) => entry.is_pinned).length;
   const recipeCount = entries.filter(
@@ -42,7 +91,7 @@ export default async function MemoryPage() {
       <section className="mb-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
           <p className="text-sm font-medium text-muted-foreground">
-            Total Entries
+            Matching Entries
           </p>
           <p className="mt-2 text-2xl font-bold text-card-foreground">
             {totalEntries}
@@ -72,6 +121,8 @@ export default async function MemoryPage() {
           </p>
         </div>
       </section>
+
+      <MemoryFilters categories={categories} />
 
       <section className="mb-8 rounded-2xl border border-border bg-card p-6 shadow-sm">
         <h2 className="mb-4 text-xl font-semibold text-card-foreground">
@@ -194,12 +245,12 @@ export default async function MemoryPage() {
 
                   {tagList.length > 0 && (
                     <div className="mt-4 flex flex-wrap gap-2">
-                      {tagList.map((tag) => (
+                      {tagList.map((item) => (
                         <span
-                          key={tag}
+                          key={item}
                           className="inline-flex rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground"
                         >
-                          #{tag}
+                          #{item}
                         </span>
                       ))}
                     </div>
@@ -248,7 +299,7 @@ export default async function MemoryPage() {
 
         {!error && entries.length === 0 && (
           <div className="rounded-2xl border border-border bg-card p-6 text-muted-foreground shadow-sm">
-            No memory entries yet.
+            No matching memory entries.
           </div>
         )}
       </section>
