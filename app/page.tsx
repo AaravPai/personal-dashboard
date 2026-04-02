@@ -16,10 +16,39 @@ function getLocalDateString(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
+function normalizeTimestamp(value: string) {
+  return value.replace(" ", "T");
+}
+
+function isOverdue(dueAt: string | null) {
+  if (!dueAt) return false;
+  return new Date(normalizeTimestamp(dueAt)) < new Date();
+}
+
+function formatDueAt(dueAt: string | null) {
+  if (!dueAt) return "No due date";
+
+  return new Date(normalizeTimestamp(dueAt)).toLocaleString([], {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+function formatStatusLabel(status: string) {
+  if (status === "todo") return "To Do";
+  if (status === "in_progress") return "In Progress";
+  if (status === "done") return "Done";
+  return status;
+}
+
 export default async function Home() {
   const supabase = await createClient();
 
-  const [{ data: subscriptionsData }, { data: expensesData }] = await Promise.all([
+  const [
+    { data: subscriptionsData },
+    { data: expensesData },
+    { data: todosData },
+  ] = await Promise.all([
     supabase
       .from("subscriptions")
       .select("*")
@@ -29,10 +58,15 @@ export default async function Home() {
       .select("*")
       .order("purchase_date", { ascending: false })
       .order("created_at", { ascending: false }),
+    supabase
+      .from("todos")
+      .select("*")
+      .order("created_at", { ascending: false }),
   ]);
 
   const subscriptions = subscriptionsData ?? [];
   const expenses = expensesData ?? [];
+  const todos = todosData ?? [];
 
   const monthlySubscriptionTotal = subscriptions.reduce((sum, sub) => {
     const cost = Number(sub.cost) || 0;
@@ -60,15 +94,21 @@ export default async function Home() {
 
   const totalMonthlySpending = monthlySubscriptionTotal + monthSpend;
 
+  const openTasks = todos.filter((todo) => todo.status !== "done").length;
+  const overdueTasks = todos.filter(
+    (todo) => todo.status !== "done" && isOverdue(todo.due_at)
+  ).length;
+
   const recentSubscriptions = subscriptions.slice(0, 3);
   const recentExpenses = expenses.slice(0, 5);
+  const recentTasks = todos.slice(0, 5);
 
   return (
     <DashboardShell
       title="Dashboard"
       description="Your central hub for subscriptions, expenses, tasks, and memory."
     >
-      <section className="mb-8 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <section className="mb-8 grid gap-4 md:grid-cols-2 xl:grid-cols-6">
         <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
           <p className="text-sm font-medium text-muted-foreground">
             Monthly Subscription Total
@@ -96,33 +136,44 @@ export default async function Home() {
           </p>
         </div>
 
-        <div className="relative overflow-hidden rounded-2xl border border-lux-purple/35 bg-gradient-to-br from-lux-purple-soft via-card to-lux-gold-soft/40 p-5 shadow-sm">
-          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-lux-purple via-lux-gold to-lux-silver opacity-80" />
-          <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-lux-purple/15 blur-3xl" />
-          <div className="absolute -bottom-8 -left-8 h-24 w-24 rounded-full bg-lux-gold/15 blur-3xl" />
+        <div className="relative overflow-hidden rounded-2xl border border-lux-purple/40 bg-gradient-to-br from-lux-purple-soft via-card to-lux-gold-soft p-5 shadow-md">
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-lux-purple via-lux-gold to-lux-silver" />
+          <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-lux-purple/20 blur-3xl" />
+          <div className="absolute -bottom-8 -left-8 h-24 w-24 rounded-full bg-lux-gold/20 blur-3xl" />
 
           <div className="relative">
             <p className="text-sm font-medium text-muted-foreground">
               Total Monthly Spending
             </p>
-
             <p className="mt-2 text-2xl font-bold text-foreground">
               {formatCurrency(totalMonthlySpending)}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Expenses + monthly subscription load
             </p>
           </div>
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
           <p className="text-sm font-medium text-muted-foreground">
-            Active Subscriptions
+            Open Tasks
           </p>
           <p className="mt-2 text-2xl font-bold text-card-foreground">
-            {subscriptions.length}
+            {openTasks}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-lux-gold/40 bg-lux-gold-soft p-5 shadow-sm">
+          <p className="text-sm font-medium text-muted-foreground">
+            Overdue Tasks
+          </p>
+          <p className="mt-2 text-2xl font-bold text-card-foreground">
+            {overdueTasks}
           </p>
         </div>
       </section>
 
-      <section className="mb-8 grid gap-6 xl:grid-cols-2">
+      <section className="mb-8 grid gap-6 xl:grid-cols-3">
         <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-xl font-semibold text-card-foreground">
@@ -211,6 +262,55 @@ export default async function Home() {
               ))
             ) : (
               <p className="text-sm text-muted-foreground">No expenses yet.</p>
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-card-foreground">
+              Recent Tasks
+            </h2>
+            <Link
+              href="/todos"
+              className="text-sm font-medium text-primary transition hover:opacity-80"
+            >
+              View all
+            </Link>
+          </div>
+
+          <div className="space-y-3">
+            {recentTasks.length > 0 ? (
+              recentTasks.map((todo) => (
+                <div key={todo.id} className="rounded-xl bg-muted px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-card-foreground">
+                        {todo.title}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {formatStatusLabel(todo.status)}
+                      </p>
+                    </div>
+
+                    {todo.status !== "done" && isOverdue(todo.due_at) ? (
+                      <span className="rounded-full border border-destructive/30 bg-destructive/10 px-2 py-1 text-xs font-medium text-destructive">
+                        Overdue
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-secondary px-2 py-1 text-xs font-medium text-secondary-foreground">
+                        {todo.priority}
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {formatDueAt(todo.due_at)}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">No tasks yet.</p>
             )}
           </div>
         </div>
