@@ -16,19 +16,20 @@ function getLocalDateString(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-function normalizeTimestamp(value: string) {
-  return value.replace(" ", "T");
+function parseLocalDateTime(value: string) {
+  const clean = value.replace(" ", "T").split("+")[0];
+  return new Date(clean);
 }
 
 function isOverdue(dueAt: string | null) {
   if (!dueAt) return false;
-  return new Date(normalizeTimestamp(dueAt)) < new Date();
+  return parseLocalDateTime(dueAt).getTime() < Date.now();
 }
 
 function formatDueAt(dueAt: string | null) {
   if (!dueAt) return "No due date";
 
-  return new Date(normalizeTimestamp(dueAt)).toLocaleString([], {
+  return parseLocalDateTime(dueAt).toLocaleString([], {
     dateStyle: "medium",
     timeStyle: "short",
   });
