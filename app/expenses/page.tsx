@@ -2,19 +2,13 @@ import { DashboardShell } from "@/components/dashboard-shell";
 import { createClient } from "@/lib/supabase/server";
 import { addExpense, deleteExpense } from "./actions";
 import { ExpenseFilters } from "./expense-filters";
+import { getCurrentDateInAppTimeZone } from "@/lib/datetime";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
   }).format(value);
-}
-
-function getLocalDateString(date: Date) {
-  const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, "0");
-  const day = `${date.getDate()}`.padStart(2, "0");
-  return `${year}-${month}-${day}`;
 }
 
 type SearchParams = Promise<{
@@ -89,10 +83,8 @@ export default async function ExpensesPage({
     new Set(allExpenses.map((expense) => expense.payment_method).filter(Boolean))
   ).sort() as string[];
 
-  const today = getLocalDateString(new Date());
-  const startOfMonth = new Date();
-  startOfMonth.setDate(1);
-  const startOfMonthString = getLocalDateString(startOfMonth);
+  const today = getCurrentDateInAppTimeZone();
+const startOfMonthString = `${today.slice(0, 8)}01`;
 
   const todayTotal = expenses.reduce((sum, expense) => {
     return expense.purchase_date === today

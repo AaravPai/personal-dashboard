@@ -2,16 +2,10 @@ import { DashboardShell } from "@/components/dashboard-shell";
 import { createClient } from "@/lib/supabase/server";
 import { addTodo, deleteTodo, updateTodoStatus } from "./actions";
 import { TodoFilters } from "./todo-filters";
-
-function parseLocalDateTime(value: string) {
-  const clean = value.replace(" ", "T").split("+")[0];
-  return new Date(clean);
-}
-
-function isOverdue(dueAt: string | null) {
-  if (!dueAt) return false;
-  return parseLocalDateTime(dueAt).getTime() < Date.now();
-}
+import {
+  formatLocalTimestamp,
+  isOverdueInAppTimeZone,
+} from "@/lib/datetime";
 
 function formatStatusLabel(status: string) {
   if (status === "todo") return "To Do";
@@ -30,15 +24,6 @@ function getPriorityClasses(priority: string) {
   }
 
   return "border-border bg-secondary text-secondary-foreground";
-}
-
-function formatDueAt(dueAt: string | null) {
-  if (!dueAt) return "No due date";
-
-  return parseLocalDateTime(dueAt).toLocaleString([], {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
 }
 
 type SearchParams = Promise<{
@@ -92,7 +77,7 @@ export default async function TodosPage({
       !normalizedCategory ||
       todo.category?.toLowerCase() === normalizedCategory;
 
-    const taskIsOverdue = todo.status !== "done" && isOverdue(todo.due_at);
+    const taskIsOverdue = todo.status !== "done" && isOverdueInAppTimeZone(todo.due_at);
 
     const matchesOverdue =
       overdue === ""
@@ -120,7 +105,7 @@ export default async function TodosPage({
   ).length;
   const doneCount = todos.filter((item) => item.status === "done").length;
   const overdueCount = todos.filter(
-    (item) => item.status !== "done" && isOverdue(item.due_at)
+    (item) => item.status !== "done" && isOverdueInAppTimeZone(item.due_at)
   ).length;
 
   return (
@@ -299,7 +284,7 @@ export default async function TodosPage({
                     {formatStatusLabel(todo.status)}
                   </div>
 
-                  {todo.status !== "done" && isOverdue(todo.due_at) && (
+                  {todo.status !== "done" && isOverdueInAppTimeZone(todo.due_at) && (
                     <div className="inline-flex rounded-full border border-destructive/30 bg-destructive/10 px-3 py-1 text-xs font-medium text-destructive">
                       Overdue
                     </div>
@@ -363,7 +348,7 @@ export default async function TodosPage({
                   Due
                 </p>
                 <p className="mt-1 font-semibold text-card-foreground">
-                  {formatDueAt(todo.due_at)}
+                  {formatLocalTimestamp(todo.due_at)}
                 </p>
               </div>
 

@@ -1,38 +1,17 @@
 import Link from "next/link";
 import { DashboardShell } from "@/components/dashboard-shell";
 import { createClient } from "@/lib/supabase/server";
+import {
+  formatLocalTimestamp,
+  getCurrentDateInAppTimeZone,
+  isOverdueInAppTimeZone,
+} from "@/lib/datetime";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
   }).format(value);
-}
-
-function getLocalDateString(date: Date) {
-  const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, "0");
-  const day = `${date.getDate()}`.padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function parseLocalDateTime(value: string) {
-  const clean = value.replace(" ", "T").split("+")[0];
-  return new Date(clean);
-}
-
-function isOverdue(dueAt: string | null) {
-  if (!dueAt) return false;
-  return parseLocalDateTime(dueAt).getTime() < Date.now();
-}
-
-function formatDueAt(dueAt: string | null) {
-  if (!dueAt) return "No due date";
-
-  return parseLocalDateTime(dueAt).toLocaleString([], {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
 }
 
 function formatStatusLabel(status: string) {
@@ -76,10 +55,8 @@ export default async function Home() {
     return sum;
   }, 0);
 
-  const today = getLocalDateString(new Date());
-  const startOfMonth = new Date();
-  startOfMonth.setDate(1);
-  const startOfMonthString = getLocalDateString(startOfMonth);
+  const today = getCurrentDateInAppTimeZone();
+  const startOfMonthString = `${today.slice(0, 8)}01`;
 
   const todaySpend = expenses.reduce((sum, expense) => {
     return expense.purchase_date === today
@@ -97,7 +74,7 @@ export default async function Home() {
 
   const openTasks = todos.filter((todo) => todo.status !== "done").length;
   const overdueTasks = todos.filter(
-    (todo) => todo.status !== "done" && isOverdue(todo.due_at)
+    (todo) => todo.status !== "done" && isOverdueInAppTimeZone(todo.due_at)
   ).length;
 
   const recentSubscriptions = subscriptions.slice(0, 3);
@@ -294,7 +271,7 @@ export default async function Home() {
                       </p>
                     </div>
 
-                    {todo.status !== "done" && isOverdue(todo.due_at) ? (
+                    {todo.status !== "done" && isOverdueInAppTimeZone(todo.due_at) ? (
                       <span className="rounded-full border border-destructive/30 bg-destructive/10 px-2 py-1 text-xs font-medium text-destructive">
                         Overdue
                       </span>
@@ -306,7 +283,7 @@ export default async function Home() {
                   </div>
 
                   <p className="mt-2 text-sm text-muted-foreground">
-                    {formatDueAt(todo.due_at)}
+                    {formatLocalTimestamp(todo.due_at)}
                   </p>
                 </div>
               ))
