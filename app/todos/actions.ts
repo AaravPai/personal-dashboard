@@ -17,7 +17,16 @@ export async function addTodo(formData: FormData) {
 
   const supabase = await createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("You must be logged in.");
+  }
+
   const { error } = await supabase.from("todos").insert({
+    user_id: user.id,
     title,
     description,
     due_at: dueAt || null,
@@ -43,7 +52,19 @@ export async function deleteTodo(formData: FormData) {
 
   const supabase = await createClient();
 
-  const { error } = await supabase.from("todos").delete().eq("id", id);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("You must be logged in.");
+  }
+
+  const { error } = await supabase
+    .from("todos")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id);
 
   if (error) {
     throw new Error(error.message);
@@ -63,7 +84,19 @@ export async function updateTodoStatus(formData: FormData) {
 
   const supabase = await createClient();
 
-  const { error } = await supabase.from("todos").update({ status }).eq("id", id);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("You must be logged in.");
+  }
+
+  const { error } = await supabase
+    .from("todos")
+    .update({ status })
+    .eq("id", id)
+    .eq("user_id", user.id);
 
   if (error) {
     throw new Error(error.message);

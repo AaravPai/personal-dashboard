@@ -6,6 +6,7 @@ import {
   togglePinnedMemoryEntry,
 } from "./actions";
 import { MemoryFilters } from "./memory-filters";
+import { redirect } from "next/navigation";
 
 function getTagList(tags: string | null) {
   if (!tags) return [];
@@ -32,9 +33,18 @@ export default async function MemoryPage({
 
   const supabase = await createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
   const { data, error } = await supabase
     .from("memory_entries")
     .select("*")
+    .eq("user_id", user.id)
     .order("is_pinned", { ascending: false })
     .order("created_at", { ascending: false });
 

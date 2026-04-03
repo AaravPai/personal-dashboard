@@ -16,7 +16,16 @@ export async function addMemoryEntry(formData: FormData) {
 
   const supabase = await createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("You must be logged in.");
+  }
+
   const { error } = await supabase.from("memory_entries").insert({
+    user_id: user.id,
     title,
     content,
     category,
@@ -41,10 +50,19 @@ export async function deleteMemoryEntry(formData: FormData) {
 
   const supabase = await createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("You must be logged in.");
+  }
+
   const { error } = await supabase
     .from("memory_entries")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .eq("user_id", user.id);
 
   if (error) {
     throw new Error(error.message);
@@ -66,10 +84,19 @@ export async function togglePinnedMemoryEntry(formData: FormData) {
 
   const supabase = await createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("You must be logged in.");
+  }
+
   const { error } = await supabase
     .from("memory_entries")
     .update({ is_pinned: nextPinnedValue })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("user_id", user.id);
 
   if (error) {
     throw new Error(error.message);

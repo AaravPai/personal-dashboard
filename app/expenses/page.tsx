@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { addExpense, deleteExpense } from "./actions";
 import { ExpenseFilters } from "./expense-filters";
 import { getCurrentDateInAppTimeZone } from "@/lib/datetime";
+import { redirect } from "next/navigation";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("en-US", {
@@ -34,9 +35,18 @@ export default async function ExpensesPage({
 
   const supabase = await createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
   const { data, error } = await supabase
     .from("expenses")
     .select("*")
+    .eq("user_id", user.id)
     .order("purchase_date", { ascending: false })
     .order("created_at", { ascending: false });
 
@@ -60,11 +70,9 @@ export default async function ExpensesPage({
       !normalizedPaymentMethod ||
       expense.payment_method?.toLowerCase() === normalizedPaymentMethod;
 
-    const matchesStartDate =
-      !start_date || expense.purchase_date >= start_date;
+    const matchesStartDate = !start_date || expense.purchase_date >= start_date;
 
-    const matchesEndDate =
-      !end_date || expense.purchase_date <= end_date;
+    const matchesEndDate = !end_date || expense.purchase_date <= end_date;
 
     return (
       matchesQuery &&
@@ -84,7 +92,7 @@ export default async function ExpensesPage({
   ).sort() as string[];
 
   const today = getCurrentDateInAppTimeZone();
-const startOfMonthString = `${today.slice(0, 8)}01`;
+  const startOfMonthString = `${today.slice(0, 8)}01`;
 
   const todayTotal = expenses.reduce((sum, expense) => {
     return expense.purchase_date === today

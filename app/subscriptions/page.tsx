@@ -1,6 +1,7 @@
 import { DashboardShell } from "@/components/dashboard-shell";
 import { createClient } from "@/lib/supabase/server";
 import { addSubscription, deleteSubscription } from "./actions";
+import { redirect } from "next/navigation";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("en-US", {
@@ -12,9 +13,18 @@ function formatCurrency(value: number) {
 export default async function SubscriptionsPage() {
   const supabase = await createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
   const { data, error } = await supabase
     .from("subscriptions")
     .select("*")
+    .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
   const subscriptions = data ?? [];

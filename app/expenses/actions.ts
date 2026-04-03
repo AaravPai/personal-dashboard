@@ -24,7 +24,16 @@ export async function addExpense(formData: FormData) {
 
   const supabase = await createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("You must be logged in.");
+  }
+
   const { error } = await supabase.from("expenses").insert({
+    user_id: user.id,
     amount,
     merchant,
     category,
@@ -38,6 +47,7 @@ export async function addExpense(formData: FormData) {
   }
 
   revalidatePath("/expenses");
+  revalidatePath("/");
 }
 
 export async function deleteExpense(formData: FormData) {
@@ -49,11 +59,24 @@ export async function deleteExpense(formData: FormData) {
 
   const supabase = await createClient();
 
-  const { error } = await supabase.from("expenses").delete().eq("id", id);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("You must be logged in.");
+  }
+
+  const { error } = await supabase
+    .from("expenses")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id);
 
   if (error) {
     throw new Error(error.message);
   }
 
   revalidatePath("/expenses");
+  revalidatePath("/");
 }

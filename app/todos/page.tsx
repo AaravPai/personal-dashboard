@@ -6,6 +6,7 @@ import {
   formatLocalTimestamp,
   isOverdueInAppTimeZone,
 } from "@/lib/datetime";
+import { redirect } from "next/navigation";
 
 function formatStatusLabel(status: string) {
   if (status === "todo") return "To Do";
@@ -49,9 +50,18 @@ export default async function TodosPage({
 
   const supabase = await createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
   const { data, error } = await supabase
     .from("todos")
     .select("*")
+    .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
   const allTodos = data ?? [];
@@ -77,7 +87,8 @@ export default async function TodosPage({
       !normalizedCategory ||
       todo.category?.toLowerCase() === normalizedCategory;
 
-    const taskIsOverdue = todo.status !== "done" && isOverdueInAppTimeZone(todo.due_at);
+    const taskIsOverdue =
+      todo.status !== "done" && isOverdueInAppTimeZone(todo.due_at);
 
     const matchesOverdue =
       overdue === ""

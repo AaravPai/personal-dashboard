@@ -24,7 +24,16 @@ export async function addSubscription(formData: FormData) {
 
   const supabase = await createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("You must be logged in.");
+  }
+
   const { error } = await supabase.from("subscriptions").insert({
+    user_id: user.id,
     name,
     cost,
     billing_cycle: billingCycle,
@@ -38,6 +47,7 @@ export async function addSubscription(formData: FormData) {
   }
 
   revalidatePath("/subscriptions");
+  revalidatePath("/");
 }
 
 export async function deleteSubscription(formData: FormData) {
@@ -49,11 +59,24 @@ export async function deleteSubscription(formData: FormData) {
 
   const supabase = await createClient();
 
-  const { error } = await supabase.from("subscriptions").delete().eq("id", id);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("You must be logged in.");
+  }
+
+  const { error } = await supabase
+    .from("subscriptions")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id);
 
   if (error) {
     throw new Error(error.message);
   }
 
   revalidatePath("/subscriptions");
+  revalidatePath("/");
 }

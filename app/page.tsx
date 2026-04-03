@@ -41,15 +41,18 @@ export default async function Home() {
     supabase
       .from("subscriptions")
       .select("*")
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
     supabase
       .from("expenses")
       .select("*")
+      .eq("user_id", user.id)
       .order("purchase_date", { ascending: false })
       .order("created_at", { ascending: false }),
     supabase
       .from("todos")
       .select("*")
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
   ]);
 
