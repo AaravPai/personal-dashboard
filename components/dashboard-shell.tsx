@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { DashboardSidebar } from "@/components/dashboard-sidebar";
 import { ModeToggle } from "@/components/mode-toggle";
+import { LogoutButton } from "@/components/logout-button";
 
 type DashboardShellProps = {
   title: string;
@@ -26,7 +27,10 @@ export function DashboardShell({
             )}
           </div>
 
-          <ModeToggle />
+          <div className="flex items-center gap-3">
+            <ModeToggle />
+            <LogoutButton />
+          </div>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
